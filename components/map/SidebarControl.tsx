@@ -1,51 +1,59 @@
+// components/map/SidebarControl.tsx
 'use client'
 import { useState } from 'react'
-import { MapControlProps } from "@/types";
-
-interface TileLayerConfig {
-  name: string;
-  url: string;
-  attribution: string;
-}
+import { MapControlProps, TileLayerConfig } from "@/types";
 
 interface ExtendedMapControlProps extends MapControlProps {
   tileLayers?: Record<string, TileLayerConfig>;
   activeTileLayer?: string;
   onTileLayerChange?: (layer: string) => void;
+  showHistory?: boolean;
+  onHistoryChange?: (show: boolean) => void;
+  historyCount?: number;
+  onClearHistory?: () => void;
 }
 
 export function SidebarControl({ 
   showRiskZones, 
-  showHeatmap, 
   onRiskZonesChange, 
-  onHeatmapChange,
   tileLayers,
   activeTileLayer,
-  onTileLayerChange
+  onTileLayerChange,
+  showHistory = false,
+  onHistoryChange,
+  historyCount = 0,
+  onClearHistory
 }: ExtendedMapControlProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      {/* Toggle Button - Compact */}
+      {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="absolute top-4 right-4 z-1000 bg-white p-2 rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-all"
         title="Kontrol Peta"
       >
-        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <div className="relative">
+          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {historyCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+              {historyCount}
+            </span>
+          )}
+        </div>
       </button>
 
-      {/* Sidebar - Compact */}
+      {/* Sidebar */}
       <div className={`absolute top-0 right-0 h-full z-1000 bg-white/95 backdrop-blur-sm shadow-lg border-l border-gray-200 transition-all duration-200 ${
-        isOpen ? 'w-56' : 'w-0'
+        isOpen ? 'w-64' : 'w-0'
       }`}>
         <div className={`h-full overflow-y-auto ${isOpen ? 'p-4' : 'p-0 opacity-0'}`}>
           
-          {/* Header Compact */}
+          {/* Header */}
           <div className="mb-4 pb-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">Kontrol Peta</h2>
@@ -60,7 +68,7 @@ export function SidebarControl({
             </div>
           </div>
 
-          {/* Tile Layer Selector - Compact */}
+          {/* Tile Layer Selector */}
           {tileLayers && onTileLayerChange && (
             <div className="mb-4">
               <label className="block text-xs font-semibold text-gray-900 mb-2">Peta Dasar</label>
@@ -76,7 +84,7 @@ export function SidebarControl({
             </div>
           )}
 
-          {/* Layer Toggles - Compact */}
+          {/* Layer Toggles */}
           <div className="mb-4">
             <h3 className="text-xs font-semibold text-gray-900 mb-2">Layer Tampilan</h3>
             <div className="space-y-2">
@@ -94,23 +102,49 @@ export function SidebarControl({
                 </label>
               </div>
 
-              {/* Heatmap Toggle */}
+              {/* History Points Toggle */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-900">Heatmap</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-medium text-gray-900">Titik Analisis</span>
+                  {historyCount > 0 && (
+                    <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded-full">
+                      {historyCount}
+                    </span>
+                  )}
+                </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={showHeatmap}
-                    onChange={(e) => onHeatmapChange(e.target.checked)}
+                    checked={showHistory}
+                    onChange={(e) => onHistoryChange?.(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-8 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-600"></div>
+                  <div className="w-8 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
           </div>
 
-          {/* Legend - Compact */}
+          {/* History Management */}
+          {historyCount > 0 && (
+            <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-900">Riwayat Analisis</span>
+                <span className="text-xs text-gray-600">{historyCount} titik</span>
+              </div>
+              <button
+                onClick={onClearHistory}
+                className="w-full text-xs bg-red-500 hover:bg-red-600 text-white py-1.5 px-3 rounded transition-colors flex items-center justify-center space-x-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Hapus Semua</span>
+              </button>
+            </div>
+          )}
+
+          {/* Legend */}
           <div className="mb-4">
             <h3 className="text-xs font-semibold text-gray-900 mb-2">Legenda Risiko</h3>
             <div className="space-y-1.5">
@@ -129,13 +163,15 @@ export function SidebarControl({
             </div>
           </div>
 
-          {/* Quick Tips - Compact */}
+          {/* Quick Tips */}
           <div className="bg-blue-50/80 p-3 rounded border border-blue-200/50">
             <h4 className="text-xs font-semibold text-blue-800 mb-1.5">Tips Cepat</h4>
             <ul className="text-[11px] text-blue-700 space-y-0.5">
-              <li>• Klik area hijau untuk analisis</li>
-              <li>• Area gelap = luar DIY</li>
-              <li>• Peta terkunci wilayah DIY</li>
+              <li>• Klik area untuk analisis risiko</li>
+              <li>• Aktifkan Titik Analisis untuk melihat riwayat</li>
+              <li>• Merah: Risiko Tinggi</li>
+              <li>• Kuning: Risiko Sedang</li>
+              <li>• Hijau: Risiko Rendah</li>
             </ul>
           </div>
         </div>

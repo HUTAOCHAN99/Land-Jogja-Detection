@@ -144,7 +144,6 @@ export function RiskMarker({ position, riskData, onClose }: RiskMarkerProps) {
     timestamp: riskData.timestamp || new Date().toISOString()
   };
 
-  const recommendations = getMitigationRecommendations(safeRiskData);
 
   const handlePopupClose = () => {
     if (onClose) {

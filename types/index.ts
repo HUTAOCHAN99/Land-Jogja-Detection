@@ -330,3 +330,66 @@ export function isRiskZoneDetail(obj: any): obj is RiskZoneDetail {
     typeof obj.riskLevel === 'string'
   );
 }
+
+// Tambahkan di types/index.ts
+export interface ElevationAPIResponse {
+  results?: Array<{
+    latitude: number;
+    longitude: number;
+    elevation: number;
+  }>;
+}
+
+export interface ReverseGeocodingResponse {
+  address: {
+    village?: string;
+    hamlet?: string;
+    subdistrict?: string;
+    city_district?: string;
+    city?: string;
+    town?: string;
+    state?: string;
+    country?: string;
+  };
+}
+
+export interface RiskHeatmapZone {
+  id: string;
+  name: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  coordinates: [number, number][];
+  riskScore: number;
+  population?: number;
+  area?: number;
+}
+
+export interface HeatmapConfig {
+  opacity: number;
+  showLabels: boolean;
+  showBorders: boolean;
+  colorScheme: 'standard' | 'warning' | 'accessibility';
+}
+
+export interface AnalyzedPoint {
+  id: string;
+  position: [number, number];
+  riskData: RiskData;
+  timestamp: string;
+}
+
+export interface MapHistoryState {
+  analyzedPoints: AnalyzedPoint[];
+  showHistory: boolean;
+}
+
+
+export interface Subdistrict {
+  id: string;
+  name: string;
+  district: string;
+  position: [number, number];
+  riskData: RiskData;
+  population?: number;
+  area?: number;
+}
+

@@ -1,18 +1,18 @@
+// components/MapComponent.tsx
 'use client'
 
 import 'leaflet/dist/leaflet.css'
 import { useMapConfig } from '@/hooks/useMap'
 import { useDIYGeoJSON } from '@/hooks/useDIYGeoJSON'
-import 'leaflet/dist/leaflet.css';
 import { useState } from 'react'
 import { DIYBoundaryFallback } from './map/DIYBoundaryFallback'
 import { InfoPanel } from './map/InfoPanel'
 import { LoadingIndicator } from './map/LoadingIndicator'
 import { MapClickHandler } from './map/MapClickHandler'
-
 import { PreciseDIYBoundary } from './map/PreciseDIYBoundary'
 import { RiskMarker } from './map/RiskMarker'
 import { SidebarControl } from './map/SidebarControl'
+import { HistoryMarkers } from './map/HistoryMarkers'
 import { MapContainer, TileLayer } from 'react-leaflet';
 import type { MapContainerProps } from 'react-leaflet';
 
@@ -32,16 +32,6 @@ const tileLayers = {
     name: 'Topografi',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: 'OpenTopoMap'
-  },
-  dark: {
-    name: 'Gelap',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: 'CartoDB'
-  },
-  minimal: {
-    name: 'Minimal',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: 'CartoDB'
   }
 } as const;
 
@@ -53,11 +43,12 @@ export default function MapComponent() {
     riskData,
     loading,
     showRiskZones,
-    showHeatmap,
     setShowRiskZones,
-    setShowHeatmap,
     handleMapClick,
-    clearRiskData
+    clearRiskData,
+    mapHistory,
+    toggleShowHistory,
+    clearHistory
   } = useMapConfig();
 
   const { geoJSON, diyFeature, loading: geoJSONLoading, error, sourceUsed } = useDIYGeoJSON();
@@ -68,12 +59,16 @@ export default function MapComponent() {
     setActiveTileLayer(layer as TileLayerKey);
   };
 
-  // Handler untuk close risk marker
   const handleRiskMarkerClose = () => {
     clearRiskData();
   };
 
-  // Proper MapContainer props with correct typing
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleHistoryMarkerClick = (point: any) => {
+    // Optional: Bisa digunakan untuk focus ke marker tertentu
+    console.log('History marker clicked:', point);
+  };
+
   const mapContainerProps: MapContainerProps = {
     center: [-7.7972, 110.3688] as [number, number],
     zoom: 10,
@@ -86,12 +81,18 @@ export default function MapComponent() {
     <div className="relative h-full">
       <SidebarControl
         showRiskZones={showRiskZones}
-        showHeatmap={showHeatmap}
         onRiskZonesChange={setShowRiskZones}
-        onHeatmapChange={setShowHeatmap}
         tileLayers={tileLayers}
         activeTileLayer={activeTileLayer}
         onTileLayerChange={handleTileLayerChange}
+        showHistory={mapHistory.showHistory}
+        onHistoryChange={toggleShowHistory}
+        historyCount={mapHistory.analyzedPoints.length}
+        onClearHistory={clearHistory}
+        showHeatmap={false} 
+        onHeatmapChange={function (): void {
+          throw new Error('Function not implemented.')
+        }} 
       />
 
       <MapContainer {...mapContainerProps}>
@@ -99,10 +100,15 @@ export default function MapComponent() {
           attribution={tileLayers[activeTileLayer].attribution}
           url={tileLayers[activeTileLayer].url}
         />
+      
+        {/* History Markers - TITIK ANALISIS SEBELUMNYA */}
+        <HistoryMarkers 
+          points={mapHistory.analyzedPoints}
+          visible={mapHistory.showHistory}
+          onMarkerClick={handleHistoryMarkerClick}
+        />
         
-        {/* TAMPILKAN KEDUANYA: Batas DIY + Detail Kabupaten */}
-        
-        {/* 1. Batas DIY dengan area luar yang gelap */}
+        {/* Batas DIY */}
         {!geoJSONLoading && diyFeature && (
           <PreciseDIYBoundary 
             diyFeature={diyFeature} 
@@ -111,11 +117,11 @@ export default function MapComponent() {
           />
         )}
         
-        {/* 2. Fallback jika data detail tidak ada */}
         {(!diyFeature || error) && <DIYBoundaryFallback />}
         
         <MapClickHandler onMapClick={handleMapClick} />
         
+        {/* Current Marker */}
         {clickedPosition && riskData && !loading && (
           <RiskMarker 
             position={clickedPosition} 
