@@ -81,6 +81,23 @@ export function SidebarControl({
                   <option key={key} value={key}>{layer.name}</option>
                 ))}
               </select>
+              
+              {/* Info khusus untuk layer custom */}
+              {activeTileLayer === 'custom_qgis' && tileLayers[activeTileLayer] && (
+                <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-200">
+                  <div className="flex items-center space-x-1 mb-1">
+                    <span className="text-purple-600">🗺️</span>
+                    <span className="text-xs font-medium text-purple-800">Peta Khusus DIY</span>
+                  </div>
+                  <div className="text-[10px] text-purple-700">
+                    • Tersedia zoom 10-14
+                    <br/>
+                    • Data lokal dari QGIS
+                    <br/>
+                    • Optimasi untuk DIY
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

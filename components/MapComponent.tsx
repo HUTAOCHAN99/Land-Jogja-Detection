@@ -13,29 +13,53 @@ import { PreciseDIYBoundary } from './map/PreciseDIYBoundary'
 import { RiskMarker } from './map/RiskMarker'
 import { SidebarControl } from './map/SidebarControl'
 import { HistoryMarkers } from './map/HistoryMarkers'
-import { MapContainer, TileLayer } from 'react-leaflet';
-import type { MapContainerProps } from 'react-leaflet';
+import { DataSourceInfo } from './map/DataSourceInfo'
+import { MapContainer, TileLayer } from 'react-leaflet'
+import type { MapContainerProps, TileLayerProps } from 'react-leaflet'
+import { AnalyzedPoint, TileLayerConfig } from '@/types'
+import { Toast } from './map/Toast'
+import { TileLayerInfo } from './map/components/map/TileLayerInfo'
 
-// Define tile layer options
-const tileLayers = {
+
+// Define tile layer options - UPDATE DENGAN QGIS LAYER
+const tileLayers: Record<string, TileLayerConfig> = {
   standard: {
     name: 'Standar',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: 'OpenStreetMap'
+    attribution: '© OpenStreetMap contributors'
   },
   satellite: {
     name: 'Satelit', 
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Esri'
+    attribution: '© Esri'
   },
   terrain: {
     name: 'Topografi',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: 'OpenTopoMap'
+    attribution: '© OpenTopoMap'
+  },
+  // Tambahkan layer custom dari QGIS
+  custom_qgis: {
+    name: 'Peta Khusus DIY',
+    url: '/tiles/{z}/{x}/{y}.png', // Path ke tile folder di public
+    attribution: 'Created by QGIS',
+    minZoom: 10,
+    maxZoom: 14,
+    tms: false
   }
-} as const;
+}
 
-type TileLayerKey = keyof typeof tileLayers;
+type TileLayerKey = keyof typeof tileLayers
+
+interface CustomTileLayerProps extends TileLayerProps {
+  minZoom?: number;
+  maxZoom?: number;
+  tms?: boolean;
+}
+
+function CustomTileLayer(props: CustomTileLayerProps) {
+  return <TileLayer {...props} />
+}
 
 export default function MapComponent() {
   const {
@@ -48,26 +72,34 @@ export default function MapComponent() {
     clearRiskData,
     mapHistory,
     toggleShowHistory,
-    clearHistory
-  } = useMapConfig();
+    clearHistory,
+    toast,
+    setToast,
+    showToast,
+    activeTileLayer,
+    handleTileLayerChange
+  } = useMapConfig()
 
-  const { geoJSON, diyFeature, loading: geoJSONLoading, error, sourceUsed } = useDIYGeoJSON();
+  const { diyFeature, loading: geoJSONLoading, sourceUsed } = useDIYGeoJSON()
   
-  const [activeTileLayer, setActiveTileLayer] = useState<TileLayerKey>('standard');
-
-  const handleTileLayerChange = (layer: string) => {
-    setActiveTileLayer(layer as TileLayerKey);
-  };
+  const [showHeatmap, setShowHeatmap] = useState<boolean>(false)
 
   const handleRiskMarkerClose = () => {
-    clearRiskData();
-  };
+    clearRiskData()
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleHistoryMarkerClick = (point: any) => {
-    // Optional: Bisa digunakan untuk focus ke marker tertentu
-    console.log('History marker clicked:', point);
-  };
+  const handleHistoryMarkerClick = (point: AnalyzedPoint) => {
+    console.log('History marker clicked:', point)
+  }
+
+  // Handler untuk map click dengan error handling
+  const handleMapClickWithError = async (lat: number, lng: number, accuracy: number) => {
+    try {
+      await handleMapClick(lat, lng)
+    } catch (error) {
+      console.error('Map click error:', error)
+    }
+  }
 
   const mapContainerProps: MapContainerProps = {
     center: [-7.7972, 110.3688] as [number, number],
@@ -75,10 +107,23 @@ export default function MapComponent() {
     style: { height: '100%', width: '100%' },
     scrollWheelZoom: true,
     className: "z-0"
-  };
+  }
+
+  // Get current tile layer config
+  const currentLayer = tileLayers[activeTileLayer]
 
   return (
     <div className="relative h-full">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)}
+          duration={3000}
+        />
+      )}
+
       <SidebarControl
         showRiskZones={showRiskZones}
         onRiskZonesChange={setShowRiskZones}
@@ -89,37 +134,44 @@ export default function MapComponent() {
         onHistoryChange={toggleShowHistory}
         historyCount={mapHistory.analyzedPoints.length}
         onClearHistory={clearHistory}
-        showHeatmap={false} 
-        onHeatmapChange={function (): void {
-          throw new Error('Function not implemented.')
-        }} 
+        showHeatmap={showHeatmap}
+        onHeatmapChange={setShowHeatmap}
+      />
+      
+      {/* Tile Layer Info Component */}
+      <TileLayerInfo 
+        layer={tileLayers[activeTileLayer]}
+        isActive={true}
       />
 
       <MapContainer {...mapContainerProps}>
-        <TileLayer
-          attribution={tileLayers[activeTileLayer].attribution}
-          url={tileLayers[activeTileLayer].url}
+        {/* Dynamic Tile Layer dengan props custom */}
+        <CustomTileLayer
+          attribution={currentLayer.attribution}
+          url={currentLayer.url}
+          minZoom={currentLayer.minZoom}
+          maxZoom={currentLayer.maxZoom}
+          tms={currentLayer.tms}
         />
       
-        {/* History Markers - TITIK ANALISIS SEBELUMNYA */}
+        {/* History Markers */}
         <HistoryMarkers 
           points={mapHistory.analyzedPoints}
           visible={mapHistory.showHistory}
           onMarkerClick={handleHistoryMarkerClick}
         />
         
-        {/* Batas DIY */}
-        {!geoJSONLoading && diyFeature && (
+        {/* Batas DIY dengan area gelap di luar DIY */}
+        {!geoJSONLoading && diyFeature ? (
           <PreciseDIYBoundary 
             diyFeature={diyFeature} 
-            allProvinces={geoJSON || undefined}
             source={sourceUsed}
           />
+        ) : (
+          <DIYBoundaryFallback />
         )}
         
-        {(!diyFeature || error) && <DIYBoundaryFallback />}
-        
-        <MapClickHandler onMapClick={handleMapClick} />
+        <MapClickHandler onMapClick={handleMapClickWithError} />
         
         {/* Current Marker */}
         {clickedPosition && riskData && !loading && (
@@ -141,8 +193,32 @@ export default function MapComponent() {
         </div>
       )}
 
+      {/* Layer info indicator */}
+      <div className="absolute bottom-20 left-4 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-md border border-gray-200 z-1000">
+        <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full ${
+            activeTileLayer === 'custom_qgis' ? 'bg-purple-500' :
+            activeTileLayer === 'satellite' ? 'bg-green-500' :
+            activeTileLayer === 'terrain' ? 'bg-orange-500' : 'bg-blue-500'
+          }`}></div>
+          <div>
+            <span className="text-xs font-medium text-gray-700">
+              {currentLayer.name}
+            </span>
+            <div className="text-[10px] text-gray-500">
+              Zoom: {currentLayer.minZoom || 0}-{currentLayer.maxZoom || 18}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <LoadingIndicator loading={loading} />
       <InfoPanel />
+      
+      {/* Data Source Info */}
+      {riskData && (
+        <DataSourceInfo data={{ metadata: riskData.metadata }} />
+      )}
     </div>
-  );
+  )
 }
